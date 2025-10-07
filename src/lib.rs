@@ -73,14 +73,16 @@ mod syntax;
 #[cfg(test)]
 mod tests;
 mod themes;
+mod trie;
 
 #[cfg(feature = "egui")]
 use egui::text::LayoutJob;
 #[cfg(feature = "egui")]
 use egui::widgets::text_edit::TextEditOutput;
+pub use highlighting::Token;
 #[cfg(feature = "egui")]
 use highlighting::highlight;
-pub use highlighting::Token;
+use prefix_tree::Trie;
 #[cfg(feature = "editor")]
 use std::hash::{Hash, Hasher};
 pub use syntax::{Syntax, TokenType};
@@ -108,6 +110,7 @@ pub struct CodeEditor {
     vscroll: bool,
     stick_to_bottom: bool,
     desired_width: f32,
+    trie: Option<Trie>,
 }
 
 #[cfg(feature = "editor")]
@@ -123,10 +126,14 @@ impl Hash for CodeEditor {
 #[cfg(feature = "editor")]
 impl Default for CodeEditor {
     fn default() -> CodeEditor {
+        use crate::trie::trie_from_syntax;
+
+        let syntax = Syntax::rust();
         CodeEditor {
             id: String::from("Code Editor"),
             theme: ColorTheme::GRUVBOX,
-            syntax: Syntax::rust(),
+            trie: Some(trie_from_syntax(&syntax)),
+            syntax,
             numlines: true,
             numlines_shift: 0,
             numlines_only_natural: false,
@@ -209,7 +216,13 @@ impl CodeEditor {
     ///
     /// **Default: Rust**
     pub fn with_syntax(self, syntax: Syntax) -> Self {
-        CodeEditor { syntax, ..self }
+        use crate::trie::trie_from_syntax;
+        let trie = Some(trie_from_syntax(&syntax));
+        CodeEditor {
+            syntax,
+            trie,
+            ..self
+        }
     }
 
     /// Turn on/off scrolling on the vertical axis.
@@ -259,6 +272,20 @@ impl CodeEditor {
         let font_id = egui::FontId::monospace(self.fontsize);
         let color = self.theme.type_color(ty);
         egui::text::TextFormat::simple(font_id, color)
+    }
+
+    #[cfg(feature = "egui")]
+    pub fn find_completions(&self, prefix: &str) -> Vec<String> {
+        self.trie
+            .as_ref()
+            .map(|t| {
+                if self.syntax.case_sensitive {
+                    t.find_completions(prefix)
+                } else {
+                    t.find_completions(&prefix.to_uppercase())
+                }
+            })
+            .unwrap_or_default()
     }
 
     #[cfg(feature = "egui")]

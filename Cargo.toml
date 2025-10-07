@@ -2,7 +2,7 @@
 name = "egui_code_editor"
 authors = ["Roman Chumak <p4ymak@yandex.ru>"]
 version = "0.2.17"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 repository = "https://github.com/p4ymak/egui_code_editor"
 description = "egui Code Editor widget with numbered lines and syntax highlighting.."
@@ -13,6 +13,7 @@ keywords = ["egui", "GUI", "editor", "syntax", "highlighting"]
 [dependencies]
 egui = { version = "0.32", optional = true }
 serde = { version = "1", optional = true}
+prefix_tree = { path = "../prefix_tree" }
 
 [lib]
 name = "egui_code_editor"

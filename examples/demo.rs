@@ -1,7 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use eframe::{self, egui, CreationContext};
-use egui_code_editor::{self, highlighting::Token, CodeEditor, ColorTheme, Syntax};
+use eframe::{self, CreationContext, egui};
+use egui_code_editor::{
+    self, CodeEditor, ColorTheme, Editor, Syntax, TokenType, highlighting::Token,
+};
 
 const THEMES: [ColorTheme; 8] = [
     ColorTheme::AYU,
@@ -114,7 +116,7 @@ impl SyntaxDemo {
 
 fn main() -> Result<(), eframe::Error> {
     #[cfg(debug_assertions)]
-    {
+    unsafe {
         std::env::set_var("RUST_BACKTRACE", "1");
     }
 
@@ -216,7 +218,61 @@ impl eframe::App for CodeEditorDemo {
                 .with_numlines_shift(self.shift)
                 .with_numlines_only_natural(self.numlines_only_natural)
                 .vscroll(true);
-            editor.show(ui, &mut self.code);
+            let output = editor.show(ui, &mut self.code);
+            let galley = output.galley;
+            // Get the current cursor state and range
+
+            let cursor_state = output.state.cursor;
+            let cursor_range = cursor_state.char_range();
+            if let Some(range) = cursor_range {
+                // Convert the primary cursor's char index to a position within the galley
+                let cursor_pos_in_galley = galley.pos_from_cursor(range.primary);
+                // Calculate the absolute on-screen position by adding the widget's screen position
+                let cursor_on_screen = output.response.rect.left_top()
+                    + cursor_pos_in_galley.left_top().to_vec2()
+                    + egui::Vec2::new(0.0, 20.0);
+                // `cursor_on_screen` now holds the cursor's position on the screen
+
+                let word = galley
+                    .text()
+                    .get(0..range.primary.index)
+                    .and_then(|r| r.rsplit_once(' '))
+                    .map(|s| s.1.trim());
+                if let Some(prefix) = word
+                    && !prefix.is_empty()
+                {
+                    let completions = editor.find_completions(prefix);
+                    if !completions.is_empty() {
+                        egui::Window::new("completions")
+                            .title_bar(false)
+                            .resizable(false)
+                            .current_pos(cursor_on_screen)
+                            .show(ui.ctx(), |ui| {
+                                // if let Some(prefix) = self.code.split_whitespace().last() {
+                                for completion in completions.iter() {
+                                    let syntax = editor.syntax();
+                                    let word = format!(
+                                        "{}{completion}",
+                                        if self.syntax.case_sensitive {
+                                            prefix
+                                        } else {
+                                            &prefix.to_uppercase()
+                                        }
+                                    );
+                                    let token_type = match &word {
+                                        word if syntax.is_keyword(word) => TokenType::Keyword,
+                                        word if syntax.is_special(word) => TokenType::Special,
+                                        word if syntax.is_type(word) => TokenType::Type,
+                                        _ => TokenType::Literal,
+                                    };
+                                    let fmt = editor.format(token_type);
+                                    let colored = egui::text::LayoutJob::single_section(word, fmt);
+                                    ui.button(colored);
+                                }
+                            });
+                    }
+                }
+            }
 
             ui.separator();
 
