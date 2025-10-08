@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use eframe::{self, CreationContext, egui};
+use egui::{TextBuffer, text_selection::text_cursor_state::ccursor_previous_word};
 use egui_code_editor::{
     self, CodeEditor, ColorTheme, Editor, Syntax, TokenType, highlighting::Token,
 };
@@ -208,6 +209,7 @@ impl eframe::App for CodeEditorDemo {
                 h.add(egui::DragValue::new(&mut self.shift));
                 h.checkbox(&mut self.numlines_only_natural, "Only Natural Numbering");
             });
+
             let mut editor = CodeEditor::default()
                 .id_source("code editor")
                 .with_rows(10)
@@ -218,30 +220,36 @@ impl eframe::App for CodeEditorDemo {
                 .with_numlines_shift(self.shift)
                 .with_numlines_only_natural(self.numlines_only_natural)
                 .vscroll(true);
+
             let output = editor.show(ui, &mut self.code);
             let galley = output.galley;
-            // Get the current cursor state and range
 
-            let cursor_state = output.state.cursor;
-            let cursor_range = cursor_state.char_range();
+            let cursor_range = output.state.cursor.char_range();
             if let Some(range) = cursor_range {
-                // Convert the primary cursor's char index to a position within the galley
-                let cursor_pos_in_galley = galley.pos_from_cursor(range.primary);
-                // Calculate the absolute on-screen position by adding the widget's screen position
+                let cursor = range.primary;
+                let cursor_pos_in_galley = galley.pos_from_cursor(cursor);
                 let cursor_on_screen = output.response.rect.left_top()
                     + cursor_pos_in_galley.left_top().to_vec2()
                     + egui::Vec2::new(0.0, 20.0);
-                // `cursor_on_screen` now holds the cursor's position on the screen
+                let word_start = ccursor_previous_word(galley.text(), cursor);
+                let next_char_allows = galley
+                    .chars()
+                    .nth(cursor.index)
+                    .is_none_or(|c| !(c.is_alphanumeric() || c == '_'))
+                    || (range.secondary.index > range.primary.index);
 
-                let word = galley
-                    .text()
-                    .get(0..range.primary.index)
-                    .and_then(|r| r.rsplit_once(' '))
-                    .map(|s| s.1.trim());
-                if let Some(prefix) = word
-                    && !prefix.is_empty()
-                {
-                    let completions = editor.find_completions(prefix);
+                let prefix = if next_char_allows {
+                    galley
+                        .text()
+                        .char_range(word_start.index..cursor.index)
+                        .to_string()
+                } else {
+                    String::new()
+                };
+
+                // if let Some(prefix) = word
+                if !prefix.is_empty() {
+                    let completions = editor.find_completions(&prefix);
                     if !completions.is_empty() {
                         egui::Window::new("completions")
                             .title_bar(false)
@@ -254,7 +262,7 @@ impl eframe::App for CodeEditorDemo {
                                     let word = format!(
                                         "{}{completion}",
                                         if self.syntax.case_sensitive {
-                                            prefix
+                                            &prefix
                                         } else {
                                             &prefix.to_uppercase()
                                         }
@@ -272,6 +280,12 @@ impl eframe::App for CodeEditorDemo {
                             });
                     }
                 }
+                // DEBUG
+                ui.separator();
+                ui.horizontal(|h| {
+                    h.strong("Prefix:");
+                    h.label(format!("`{prefix}`"));
+                });
             }
 
             ui.separator();
