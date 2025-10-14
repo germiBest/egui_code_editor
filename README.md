@@ -1,11 +1,12 @@
 # Egui Code Editor
 [![Latest version](https://img.shields.io/crates/v/egui_code_editor.svg)](https://crates.io/crates/egui_code_editor)
 
+![Completer](screenshots/completer.gif)
+
 Text Editor Widget for [egui](https://github.com/emilk/egui) with numbered lines, simple syntax highlighting based on keywords sets and auto-completion feature.
 
-![Completer](screenshots/completer.gif)
 ### Auto-completion
-
+![Completer](screenshots/completer_demo.gif)
 Offers completions from the syntax dictionary and optionally from words previously entered by the user.
 
 *Usage:*
