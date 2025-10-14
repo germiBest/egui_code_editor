@@ -1,163 +1,43 @@
+mod trie;
+
 use crate::{ColorTheme, Syntax, Token, TokenType, format_token};
 use egui::{
-    Event, Frame, Modifiers, Sense, Stroke, TextBuffer, text::CCursor, text_edit::TextEditOutput,
+    Event, Frame, Modifiers, Sense, Stroke, TextBuffer, text_edit::TextEditOutput,
     text_selection::text_cursor_state::ccursor_previous_word,
 };
 use trie::Trie;
 
-mod trie {
-    #![allow(dead_code)]
-    use std::{iter::Peekable, str::Chars};
+impl From<&Syntax> for Trie {
+    fn from(syntax: &Syntax) -> Trie {
+        let mut trie = Trie::default();
 
-    const ROOT_CHAR: char = ' ';
-
-    #[derive(Debug, Clone)]
-    pub struct Trie {
-        root: char,
-        is_word: bool,
-        leaves: Vec<Trie>,
-    }
-
-    impl PartialEq for Trie {
-        fn eq(&self, other: &Self) -> bool {
-            self.root == other.root
+        syntax.keywords.iter().for_each(|word| trie.push(word));
+        syntax.types.iter().for_each(|word| trie.push(word));
+        syntax.special.iter().for_each(|word| trie.push(word));
+        if !syntax.case_sensitive {
+            syntax
+                .keywords
+                .iter()
+                .for_each(|word| trie.push(&word.to_lowercase()));
+            syntax
+                .types
+                .iter()
+                .for_each(|word| trie.push(&word.to_lowercase()));
+            syntax
+                .special
+                .iter()
+                .for_each(|word| trie.push(&word.to_lowercase()));
         }
-    }
-    impl PartialOrd for Trie {
-        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-            Some(self.cmp(other))
-        }
-    }
-    impl Ord for Trie {
-        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-            self.root.cmp(&other.root)
-        }
-    }
-    impl Eq for Trie {}
-
-    impl Default for Trie {
-        fn default() -> Self {
-            Self {
-                root: ROOT_CHAR,
-                is_word: false,
-                leaves: vec![],
-            }
-        }
-    }
-
-    impl Trie {
-        pub fn new(root: char) -> Self {
-            Trie {
-                root,
-                ..Default::default()
-            }
-        }
-        pub fn clear(&mut self) {
-            self.leaves.clear();
-        }
-        pub fn push(&mut self, word: &str) {
-            self.push_chars(&mut word.chars());
-        }
-
-        pub fn push_chars(&mut self, word: &mut Chars) {
-            if let Some(first) = word.next() {
-                if let Some(leaf) = self.leaves.iter_mut().find(|l| l.root == first) {
-                    leaf.push_chars(word)
-                } else {
-                    let mut new = Trie::new(first);
-                    new.push_chars(word);
-                    self.leaves.push(new);
-                }
-            } else {
-                self.is_word = true;
-                self.leaves.sort();
-                self.leaves.reverse();
-            }
-        }
-
-        pub fn from_words(words: &[&str]) -> Self {
-            let mut trie = Trie::new(ROOT_CHAR);
-            words.iter().for_each(|w| {
-                trie.push_chars(&mut w.chars());
-            });
-            trie
-        }
-
-        pub fn words(&self) -> Vec<String> {
-            let mut words = vec![];
-            for child in self.leaves.iter() {
-                child.words_recursive("", &mut words);
-            }
-            words.reverse();
-            words
-        }
-        fn words_recursive(&self, prefix: &str, words: &mut Vec<String>) {
-            let mut prefix = prefix.to_string();
-            prefix.push(self.root);
-            if self.is_word {
-                words.push(prefix.clone());
-            }
-            for child in self.leaves.iter() {
-                child.words_recursive(&prefix, words);
-            }
-        }
-
-        pub fn find_completions(&self, prefix: &str) -> Vec<String> {
-            self.find_by_prefix(prefix)
-                .map(|t| t.words())
-                .unwrap_or_default()
-        }
-        pub fn find_by_prefix(&self, prefix: &str) -> Option<&Trie> {
-            let mut found = None;
-            let mut start = " ".to_string();
-            start.push_str(prefix);
-            let mut part = start.chars().peekable();
-            self.find_recursice(&mut part, &mut found);
-            found
-        }
-        fn find_recursice<'a>(&'a self, part: &mut Peekable<Chars>, found: &mut Option<&'a Trie>) {
-            if let Some(c) = part.next()
-                && self.root == c
-            {
-                if part.peek().is_none() {
-                    *found = Some(self);
-                }
-                self.leaves
-                    .iter()
-                    .for_each(|l| l.find_recursice(&mut part.clone(), found))
-            }
-        }
+        trie
     }
 }
-pub fn trie_from_syntax(syntax: &Syntax) -> Trie {
-    let mut trie = Trie::default();
 
-    syntax.keywords.iter().for_each(|word| trie.push(word));
-    syntax.types.iter().for_each(|word| trie.push(word));
-    syntax.special.iter().for_each(|word| trie.push(word));
-    if !syntax.case_sensitive {
-        syntax
-            .keywords
-            .iter()
-            .for_each(|word| trie.push(&word.to_lowercase()));
-        syntax
-            .types
-            .iter()
-            .for_each(|word| trie.push(&word.to_lowercase()));
-        syntax
-            .special
-            .iter()
-            .for_each(|word| trie.push(&word.to_lowercase()));
-    }
-    trie
-}
-
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq)]
 /// Code-completer with pop-up above CodeEditor.
 /// In future releases will be replaced with trait.
 pub struct Completer {
     prefix: String,
-    cursor: CCursor,
+    cursor: usize,
     ignore_cursor: Option<usize>,
     trie_syntax: Trie,
     trie_user: Option<Trie>,
@@ -169,7 +49,7 @@ impl Completer {
     /// Completer shoud be stored somewhere in your App struct.
     pub fn new_with_syntax(syntax: &Syntax) -> Self {
         Completer {
-            trie_syntax: trie_from_syntax(syntax),
+            trie_syntax: Trie::from(syntax),
             ..Default::default()
         }
     }
@@ -179,6 +59,9 @@ impl Completer {
             ..self
         }
     }
+    pub fn push_word(&mut self, word: &str) {
+        self.trie_syntax.push(word);
+    }
 
     /// If using Completer without CodeEditor this method should be called before text-editing widget.
     /// Up/Down arrows for selection, Tab for completion, Esc for hiding
@@ -187,7 +70,7 @@ impl Completer {
             return;
         }
         if let Some(cursor) = self.ignore_cursor
-            && cursor == self.cursor.index
+            && cursor == self.cursor
         {
             return;
         }
@@ -207,7 +90,7 @@ impl Completer {
         let last = self.completions.len().saturating_sub(1);
         ctx.input_mut(|i| {
             if i.consume_key(Modifiers::NONE, egui::Key::Escape) {
-                self.ignore_cursor = Some(self.cursor.index);
+                self.ignore_cursor = Some(self.cursor);
             } else if i.consume_key(Modifiers::NONE, egui::Key::ArrowDown) {
                 self.variant_id = if self.variant_id == last {
                     0
@@ -267,15 +150,15 @@ impl Completer {
             // let cursor_on_screen = editor_output.response.rect.left_top()
             // + cursor_pos_in_galley.left_bottom().to_vec2();
             let word_start = ccursor_previous_word(galley.text(), cursor);
-            if self.cursor != cursor {
-                self.cursor = cursor;
+            if self.cursor != cursor.index {
+                self.cursor = cursor.index;
                 self.prefix.clear();
                 // self.completions.clear();
                 self.ignore_cursor = None;
                 self.variant_id = 0;
             }
 
-            if self.ignore_cursor.is_some_and(|c| c == self.cursor.index) {
+            if self.ignore_cursor.is_some_and(|c| c == self.cursor) {
                 editor_output.response.request_focus();
                 return;
             } else {
@@ -344,5 +227,20 @@ impl Completer {
                 });
             }
         }
+    }
+
+    /// Completer on text-editing widget, see demo for example
+    pub fn show_on_text_widget(
+        &mut self,
+        ui: &mut egui::Ui,
+        syntax: &Syntax,
+        theme: &ColorTheme,
+        mut widget: impl FnMut(&mut egui::Ui) -> TextEditOutput,
+    ) -> TextEditOutput {
+        self.handle_input(ui.ctx());
+        let fontsize = ui.text_style_height(&egui::TextStyle::Monospace);
+        let mut output = widget(ui);
+        self.show(syntax, theme, fontsize, &mut output);
+        output
     }
 }
