@@ -153,6 +153,8 @@ pub fn trie_from_syntax(syntax: &Syntax) -> Trie {
 }
 
 #[derive(Default, Debug, Clone)]
+/// Code-completer with pop-up above CodeEditor.
+/// In future releases will be replaced with trait.
 pub struct Completer {
     prefix: String,
     cursor: CCursor,
@@ -163,9 +165,8 @@ pub struct Completer {
     completions: Vec<String>,
 }
 
-/// Completer shoud be stored somewhere in your App struct.
-/// In future releases will be replaced with trait.
 impl Completer {
+    /// Completer shoud be stored somewhere in your App struct.
     pub fn new_with_syntax(syntax: &Syntax) -> Self {
         Completer {
             trie_syntax: trie_from_syntax(syntax),
@@ -238,6 +239,9 @@ impl Completer {
         fontsize: f32,
         editor_output: &mut TextEditOutput,
     ) {
+        if !editor_output.response.has_focus() {
+            return;
+        }
         let ctx = editor_output.response.ctx.clone();
         let galley = &editor_output.galley;
 
