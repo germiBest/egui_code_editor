@@ -324,6 +324,7 @@ impl CodeEditor {
     }
 
     #[cfg(feature = "egui")]
+    /// Show Code Editor with auto-completion feature
     pub fn show_with_completer(
         &mut self,
         ui: &mut egui::Ui,

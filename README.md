@@ -4,8 +4,14 @@
 Text Editor Widget for [egui](https://github.com/emilk/egui) with numbered lines, simple syntax highlighting based on keywords sets and auto-completion feature.
 
 ![Completer](screenshots/completer.gif)
+### Auto-completion
 
+Offers completions from the syntax dictionary and optionally from words previously entered by the user.
 
+*Usage:*
+- UP/DOWN Arrows: Select
+- TAB: Complete
+- ESC: Hide
 
 ## Usage with egui
 
@@ -22,7 +28,7 @@ CodeEditor::default()
   .with_syntax(syntax)
   .with_numlines(true)
   .show_with_completer(ui, &mut self.code, &mut completer);
-  // .show(ui, &mut self.code); to use without completer
+  // .show(ui, &mut self.code); // to use without completer
 ```
 
 ## Usage as lexer without egui

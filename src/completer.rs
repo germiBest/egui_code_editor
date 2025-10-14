@@ -163,6 +163,8 @@ pub struct Completer {
     completions: Vec<String>,
 }
 
+/// Completer shoud be stored somewhere in your App struct.
+/// In future releases will be replaced with trait.
 impl Completer {
     pub fn new_with_syntax(syntax: &Syntax) -> Self {
         Completer {
@@ -177,6 +179,8 @@ impl Completer {
         }
     }
 
+    /// If using Completer without CodeEditor this method should be called before text-editing widget.
+    /// Up/Down arrows for selection, Tab for completion, Esc for hiding
     pub fn handle_input(&mut self, ctx: &egui::Context) {
         if self.prefix.is_empty() {
             return;
@@ -226,6 +230,7 @@ impl Completer {
         });
     }
 
+    /// If using Completer without CodeEditor this method should be called after text-editing widget as it uses &mut TextEditOutput
     pub fn show(
         &mut self,
         syntax: &Syntax,
