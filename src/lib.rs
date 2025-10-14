@@ -67,7 +67,7 @@
 //!     }
 //! }
 //! ```
-
+#[cfg(feature = "egui")]
 mod completer;
 pub mod highlighting;
 mod syntax;
@@ -88,7 +88,7 @@ pub use syntax::{Syntax, TokenType};
 pub use themes::ColorTheme;
 pub use themes::DEFAULT_THEMES;
 
-#[cfg(feature = "editor")]
+#[cfg(feature = "egui")]
 pub use crate::completer::Completer;
 
 #[cfg(feature = "egui")]
