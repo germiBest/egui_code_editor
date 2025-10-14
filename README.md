@@ -7,6 +7,7 @@ Text Editor Widget for [egui](https://github.com/emilk/egui) with numbered lines
 
 ### Auto-completion
 ![Completer](screenshots/completer_demo.gif)
+
 Offers completions from the syntax dictionary and optionally from words previously entered by the user.
 
 *Usage:*
