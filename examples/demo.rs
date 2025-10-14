@@ -1,10 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use eframe::{self, CreationContext, egui};
-use egui::{TextBuffer, text_selection::text_cursor_state::ccursor_previous_word};
-use egui_code_editor::{
-    self, CodeEditor, ColorTheme, Editor, Syntax, TokenType, highlighting::Token,
-};
+use egui_code_editor::{self, CodeEditor, ColorTheme, Completer, Syntax, highlighting::Token};
 
 const THEMES: [ColorTheme; 8] = [
     ColorTheme::AYU,
@@ -146,6 +143,7 @@ struct CodeEditorDemo {
     code: String,
     theme: ColorTheme,
     syntax: Syntax,
+    completer: Completer,
     example: bool,
     shift: isize,
     numlines_only_natural: bool,
@@ -157,6 +155,7 @@ impl CodeEditorDemo {
             code: rust.example.to_string(),
             theme: ColorTheme::GRUVBOX,
             syntax: rust.syntax(),
+            completer: Completer::new_with_syntax(&rust.syntax()).with_user_words(),
             example: true,
             shift: 0,
             numlines_only_natural: false,
@@ -195,6 +194,8 @@ impl eframe::App for CodeEditorDemo {
                         .clicked()
                     {
                         self.syntax = syntax.syntax();
+                        self.completer =
+                            Completer::new_with_syntax(&syntax.syntax()).with_user_words();
                         if self.example {
                             self.code = syntax.example.to_string()
                         }
@@ -220,73 +221,7 @@ impl eframe::App for CodeEditorDemo {
                 .with_numlines_shift(self.shift)
                 .with_numlines_only_natural(self.numlines_only_natural)
                 .vscroll(true);
-
-            let output = editor.show(ui, &mut self.code);
-            let galley = output.galley;
-
-            let cursor_range = output.state.cursor.char_range();
-            if let Some(range) = cursor_range {
-                let cursor = range.primary;
-                let cursor_pos_in_galley = galley.pos_from_cursor(cursor);
-                let cursor_on_screen = output.response.rect.left_top()
-                    + cursor_pos_in_galley.left_top().to_vec2()
-                    + egui::Vec2::new(0.0, 20.0);
-                let word_start = ccursor_previous_word(galley.text(), cursor);
-                let next_char_allows = galley
-                    .chars()
-                    .nth(cursor.index)
-                    .is_none_or(|c| !(c.is_alphanumeric() || c == '_'))
-                    || (range.secondary.index > range.primary.index);
-
-                let prefix = if next_char_allows {
-                    galley
-                        .text()
-                        .char_range(word_start.index..cursor.index)
-                        .to_string()
-                } else {
-                    String::new()
-                };
-
-                // if let Some(prefix) = word
-                if !prefix.is_empty() {
-                    let completions = editor.find_completions(&prefix);
-                    if !completions.is_empty() {
-                        egui::Window::new("completions")
-                            .title_bar(false)
-                            .resizable(false)
-                            .current_pos(cursor_on_screen)
-                            .show(ui.ctx(), |ui| {
-                                // if let Some(prefix) = self.code.split_whitespace().last() {
-                                for completion in completions.iter() {
-                                    let syntax = editor.syntax();
-                                    let word = format!(
-                                        "{}{completion}",
-                                        if self.syntax.case_sensitive {
-                                            &prefix
-                                        } else {
-                                            &prefix.to_uppercase()
-                                        }
-                                    );
-                                    let token_type = match &word {
-                                        word if syntax.is_keyword(word) => TokenType::Keyword,
-                                        word if syntax.is_special(word) => TokenType::Special,
-                                        word if syntax.is_type(word) => TokenType::Type,
-                                        _ => TokenType::Literal,
-                                    };
-                                    let fmt = editor.format(token_type);
-                                    let colored = egui::text::LayoutJob::single_section(word, fmt);
-                                    ui.button(colored);
-                                }
-                            });
-                    }
-                }
-                // DEBUG
-                ui.separator();
-                ui.horizontal(|h| {
-                    h.strong("Prefix:");
-                    h.label(format!("`{prefix}`"));
-                });
-            }
+            editor.show_with_completer(ui, &mut self.code, &mut self.completer);
 
             ui.separator();
 
@@ -295,7 +230,7 @@ impl eframe::App for CodeEditorDemo {
                 .show(ui, |ui| {
                     for token in Token::default().tokens(&self.syntax, &self.code) {
                         ui.horizontal(|h| {
-                            let fmt = editor.format(token.ty());
+                            let fmt = editor.format_token(token.ty());
                             h.label(egui::text::LayoutJob::single_section(
                                 format!("{:?}", token.ty()),
                                 fmt,
