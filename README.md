@@ -1,21 +1,28 @@
 # Egui Code Editor
 [![Latest version](https://img.shields.io/crates/v/egui_code_editor.svg)](https://crates.io/crates/egui_code_editor)
 
-Text Editor Widget for [egui](https://github.com/emilk/egui) with numbered lines and simple syntax highlighting based on keywords sets.
+Text Editor Widget for [egui](https://github.com/emilk/egui) with numbered lines, simple syntax highlighting based on keywords sets and auto-completion feature.
+
+![Completer](screenshots/completer.gif)
+
+
 
 ## Usage with egui
 
 ```rust
-use egui_code_editor::{CodeEditor, ColorTheme, Syntax};
+use egui_code_editor::{CodeEditor, Completer, ColorTheme, Syntax};
+let syntax = Syntax::rust();
+let mut completer = Completer::new_with_syntax(&syntax).with_user_words();
 
 CodeEditor::default()
   .id_source("code editor")
   .with_rows(12)
   .with_fontsize(14.0)
   .with_theme(ColorTheme::GRUVBOX)
-  .with_syntax(Syntax::rust())
+  .with_syntax(syntax)
   .with_numlines(true)
-  .show(ui, &mut self.code);
+  .show_with_completer(ui, &mut self.code, &mut completer);
+  // .show(ui, &mut self.code); to use without completer
 ```
 
 ## Usage as lexer without egui
