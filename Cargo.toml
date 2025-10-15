@@ -1,14 +1,14 @@
 [package]
 name = "egui_code_editor"
 authors = ["Roman Chumak <p4ymak@yandex.ru>"]
-version = "0.2.19"
+version = "0.2.20"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/p4ymak/egui_code_editor"
-description = "egui Code Editor widget with numbered lines and syntax highlighting.."
+description = "egui Code Editor widget with numbered lines, syntax highlighting and auto-completion.."
 readme = "README.md"
 categories = ["gui", "text-editors"]
-keywords = ["egui", "GUI", "editor", "syntax", "highlighting"]
+keywords = ["egui", "GUI", "editor", "syntax", "highlighting", "completion"]
 
 [dependencies]
 egui = { version = "0.33", optional = true }

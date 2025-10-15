@@ -1,5 +1,7 @@
 mod trie;
 
+use std::collections::BTreeSet;
+
 use crate::{ColorTheme, Syntax, Token, TokenType, format_token};
 use egui::{
     Event, Frame, Modifiers, Sense, Stroke, TextBuffer, text_edit::TextEditOutput,
@@ -42,7 +44,7 @@ pub struct Completer {
     trie_syntax: Trie,
     trie_user: Option<Trie>,
     variant_id: usize,
-    completions: Vec<String>,
+    completions: BTreeSet<String>,
 }
 
 impl Completer {
@@ -75,18 +77,18 @@ impl Completer {
             return;
         }
 
-        let mut completions_syntax = self.trie_syntax.find_completions(&self.prefix);
-        completions_syntax.reverse();
-        let mut completions_user = self
+        let completions_syntax = self.trie_syntax.find_completions(&self.prefix);
+        let completions_user = self
             .trie_user
             .as_ref()
             .map(|t| t.find_completions(&self.prefix))
             .unwrap_or_default();
-        completions_user.reverse();
-        self.completions = [completions_syntax, completions_user].concat();
+        self.completions =
+            BTreeSet::from_iter(completions_syntax.into_iter().chain(completions_user));
         if self.completions.is_empty() {
             return;
         }
+
         let last = self.completions.len().saturating_sub(1);
         ctx.input_mut(|i| {
             if i.consume_key(Modifiers::NONE, egui::Key::Escape) {
@@ -106,7 +108,8 @@ impl Completer {
             } else if i.consume_key(Modifiers::NONE, egui::Key::Tab) {
                 let completion = self
                     .completions
-                    .get(self.variant_id)
+                    .iter()
+                    .nth(self.variant_id)
                     .map(String::from)
                     .unwrap_or_default();
                 i.events.push(Event::Paste(completion));
