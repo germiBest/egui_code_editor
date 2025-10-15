@@ -199,14 +199,13 @@ impl Completer {
                 .show(|ui| {
                     ui.response().sense = Sense::empty();
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                    let row_height = ui.spacing().interact_size.y;
-                    let count = self.completions.len().min(10);
+                    let height = fontsize * 1.5 * self.completions.len().min(10) as f32;
+                    ui.set_height(height);
 
-                    egui::ScrollArea::vertical().auto_shrink(true).show_rows(
-                        ui,
-                        row_height,
-                        count,
-                        |ui, _| {
+                    egui::ScrollArea::vertical()
+                        .auto_shrink([true, true])
+                        // .show_rows(ui, row_height, count, |ui, _| {
+                        .show(ui, |ui| {
                             for (i, completion) in self.completions.iter().enumerate() {
                                 let word = format!("{}{completion}", &self.prefix);
                                 let token_type = match &word {
@@ -237,8 +236,7 @@ impl Completer {
                                     button.scroll_to_me(None);
                                 }
                             }
-                        },
-                    );
+                        });
                 });
             }
         }
