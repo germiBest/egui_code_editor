@@ -200,12 +200,12 @@ impl Completer {
                     ui.response().sense = Sense::empty();
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                     let row_height = ui.spacing().interact_size.y;
-                    // let count = self.completions.len();
+                    let count = self.completions.len().min(10);
 
                     egui::ScrollArea::vertical().auto_shrink(true).show_rows(
                         ui,
                         row_height,
-                        10,
+                        count,
                         |ui, _| {
                             for (i, completion) in self.completions.iter().enumerate() {
                                 let word = format!("{}{completion}", &self.prefix);
