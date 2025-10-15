@@ -188,8 +188,6 @@ impl Completer {
                 String::new()
             };
             if !(self.prefix.is_empty() || self.completions.is_empty()) {
-                let count = self.completions.len();
-
                 egui::Popup::new(
                     egui::Id::new("Completer"),
                     ctx.clone(),
@@ -201,10 +199,13 @@ impl Completer {
                 .show(|ui| {
                     ui.response().sense = Sense::empty();
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                    let row_height = ui.spacing().interact_size.y;
+                    // let count = self.completions.len();
+
                     egui::ScrollArea::vertical().auto_shrink(true).show_rows(
                         ui,
-                        fontsize,
-                        count,
+                        row_height,
+                        10,
                         |ui, _| {
                             for (i, completion) in self.completions.iter().enumerate() {
                                 let word = format!("{}{completion}", &self.prefix);
