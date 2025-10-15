@@ -88,7 +88,6 @@ impl Completer {
         if self.completions.is_empty() {
             return;
         }
-
         let last = self.completions.len().saturating_sub(1);
         ctx.input_mut(|i| {
             if i.consume_key(Modifiers::NONE, egui::Key::Escape) {
@@ -200,33 +199,39 @@ impl Completer {
                 .show(|ui| {
                     ui.response().sense = Sense::empty();
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-
-                    for (i, completion) in self.completions.iter().enumerate() {
-                        let word = format!("{}{completion}", &self.prefix);
-                        let token_type = match &word {
-                            word if syntax.is_keyword(word) => TokenType::Keyword,
-                            word if syntax.is_special(word) => TokenType::Special,
-                            word if syntax.is_type(word) => TokenType::Type,
-                            _ => TokenType::Literal,
-                        };
-                        let fmt = format_token(theme, fontsize, token_type);
-                        let colored_text = egui::text::LayoutJob::single_section(word, fmt);
-                        let selected = i == self.variant_id;
-                        ui.add(
-                            egui::Button::new(colored_text)
-                                .sense(Sense::empty())
-                                .frame(true)
-                                .fill(theme.bg())
-                                .stroke(if selected {
-                                    Stroke::new(
-                                        ui.style().visuals.widgets.hovered.bg_stroke.width,
-                                        theme.type_color(TokenType::Literal),
-                                    )
-                                } else {
-                                    Stroke::NONE
-                                }),
-                        );
-                    }
+                    egui::ScrollArea::vertical().auto_shrink(true).show_rows(
+                        ui,
+                        0.0,
+                        10,
+                        |ui, _| {
+                            for (i, completion) in self.completions.iter().enumerate() {
+                                let word = format!("{}{completion}", &self.prefix);
+                                let token_type = match &word {
+                                    word if syntax.is_keyword(word) => TokenType::Keyword,
+                                    word if syntax.is_special(word) => TokenType::Special,
+                                    word if syntax.is_type(word) => TokenType::Type,
+                                    _ => TokenType::Literal,
+                                };
+                                let fmt = format_token(theme, fontsize, token_type);
+                                let colored_text = egui::text::LayoutJob::single_section(word, fmt);
+                                let selected = i == self.variant_id;
+                                ui.add(
+                                    egui::Button::new(colored_text)
+                                        .sense(Sense::empty())
+                                        .frame(true)
+                                        .fill(theme.bg())
+                                        .stroke(if selected {
+                                            Stroke::new(
+                                                ui.style().visuals.widgets.hovered.bg_stroke.width,
+                                                theme.type_color(TokenType::Literal),
+                                            )
+                                        } else {
+                                            Stroke::NONE
+                                        }),
+                                );
+                            }
+                        },
+                    );
                 });
             }
         }
