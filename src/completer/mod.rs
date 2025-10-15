@@ -215,7 +215,8 @@ impl Completer {
                                 let fmt = format_token(theme, fontsize, token_type);
                                 let colored_text = egui::text::LayoutJob::single_section(word, fmt);
                                 let selected = i == self.variant_id;
-                                ui.add(
+
+                                let button = ui.add(
                                     egui::Button::new(colored_text)
                                         .sense(Sense::empty())
                                         .frame(true)
@@ -229,6 +230,9 @@ impl Completer {
                                             Stroke::NONE
                                         }),
                                 );
+                                if selected {
+                                    button.scroll_to_me(None);
+                                }
                             }
                         },
                     );
