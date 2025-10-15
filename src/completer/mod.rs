@@ -199,12 +199,17 @@ impl Completer {
                 .show(|ui| {
                     ui.response().sense = Sense::empty();
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                    let height = fontsize * 1.5 * self.completions.len().min(10) as f32;
+                    let height = (fontsize
+                        + ui.style().visuals.widgets.hovered.bg_stroke.width * 2.0
+                        + ui.style().spacing.button_padding.y * 2.0
+                        + ui.style().spacing.item_spacing.y)
+                        * self.completions.len().min(10) as f32
+                        - ui.style().spacing.item_spacing.y;
                     ui.set_height(height);
 
                     egui::ScrollArea::vertical()
                         .auto_shrink([true, true])
-                        // .show_rows(ui, row_height, count, |ui, _| {
+                        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
                         .show(ui, |ui| {
                             for (i, completion) in self.completions.iter().enumerate() {
                                 let word = format!("{}{completion}", &self.prefix);
