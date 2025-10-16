@@ -98,10 +98,10 @@ impl Trie {
         let mut start = " ".to_string();
         start.push_str(prefix);
         let mut part = start.chars().peekable();
-        self.find_recursice(&mut part, &mut found);
+        self.find_recursive(&mut part, &mut found);
         found
     }
-    fn find_recursice<'a>(&'a self, part: &mut Peekable<Chars>, found: &mut Option<&'a Trie>) {
+    fn find_recursive<'a>(&'a self, part: &mut Peekable<Chars>, found: &mut Option<&'a Trie>) {
         if let Some(c) = part.next()
             && self.root == c
         {
@@ -110,7 +110,7 @@ impl Trie {
             }
             self.leaves
                 .iter()
-                .for_each(|l| l.find_recursice(&mut part.clone(), found))
+                .for_each(|l| l.find_recursive(&mut part.clone(), found))
         }
     }
 }
