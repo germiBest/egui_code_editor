@@ -113,6 +113,7 @@ pub struct CodeEditor {
     stick_to_bottom: bool,
     desired_width: f32,
     readonly: bool,
+    wrap_lines: bool,
 }
 
 #[cfg(feature = "editor")]
@@ -143,6 +144,7 @@ impl Default for CodeEditor {
             stick_to_bottom: false,
             desired_width: f32::INFINITY,
             readonly: false,
+            wrap_lines: false,
         }
     }
 }
@@ -270,6 +272,14 @@ impl CodeEditor {
         CodeEditor { readonly, ..self }
     }
 
+    /// Enable or disable line wrapping
+    ///
+    /// When true, long lines will wrap to fit within the available width
+    /// **Default: false**
+    pub fn with_wrap_lines(self, wrap_lines: bool) -> Self {
+        CodeEditor { wrap_lines, ..self }
+    }
+
     #[cfg(feature = "egui")]
     pub fn format_token(&self, ty: TokenType) -> egui::text::TextFormat {
         format_token(&self.theme, self.fontsize, ty)
@@ -363,11 +373,20 @@ impl CodeEditor {
                 egui::ScrollArea::horizontal()
                     .id_salt(format!("{}_inner_scroll", self.id))
                     .show(h, |ui| {
-                        let mut layouter =
-                            |ui: &egui::Ui, text_buffer: &dyn TextBuffer, _wrap_width: f32| {
-                                let layout_job = highlight(ui.ctx(), self, text_buffer.as_str());
-                                ui.fonts_mut(|f| f.layout_job(layout_job))
-                            };
+                        let mut layouter = |ui: &egui::Ui, text_buffer: &dyn TextBuffer, _wrap_width: f32| {
+                            let layout_job = highlight(ui.ctx(), self, text_buffer.as_str());
+                            let mut job = layout_job;
+                            // Setting wrap width for the layout job only if wrap_lines is enabled
+                            if self.wrap_lines {
+                                let wrap_width = ui.available_width();
+                                job.wrap = egui::text::TextWrapping {
+                                    max_width: wrap_width,
+                                    break_anywhere: true,
+                                    ..Default::default()
+                                };
+                            }
+                            ui.fonts_mut(|f| f.layout_job(job))
+                        };
                         let output = egui::TextEdit::multiline(text)
                             .id_source(&self.id)
                             .lock_focus(true)
