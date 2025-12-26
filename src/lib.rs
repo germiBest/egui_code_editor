@@ -112,6 +112,7 @@ pub struct CodeEditor {
     vscroll: bool,
     stick_to_bottom: bool,
     desired_width: f32,
+    readonly: bool,
 }
 
 #[cfg(feature = "editor")]
@@ -121,6 +122,7 @@ impl Hash for CodeEditor {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         (self.fontsize as u32).hash(state);
         self.syntax.hash(state);
+        self.readonly.hash(state);
     }
 }
 
@@ -140,6 +142,7 @@ impl Default for CodeEditor {
             vscroll: true,
             stick_to_bottom: false,
             desired_width: f32::INFINITY,
+            readonly: false,
         }
     }
 }
@@ -259,6 +262,14 @@ impl CodeEditor {
         }
     }
 
+    /// Set the editor to readonly mode
+    ///
+    /// When true, text cannot be edited but scrolling and selection still work
+    /// **Default: false**
+    pub fn with_readonly(self, readonly: bool) -> Self {
+        CodeEditor { readonly, ..self }
+    }
+
     #[cfg(feature = "egui")]
     pub fn format_token(&self, ty: TokenType) -> egui::text::TextFormat {
         format_token(&self.theme, self.fontsize, ty)
@@ -364,6 +375,7 @@ impl CodeEditor {
                             .frame(true)
                             .desired_width(self.desired_width)
                             .layouter(&mut layouter)
+                            .readonly(self.readonly)
                             .show(ui);
                         text_edit_output = Some(output);
                     });
